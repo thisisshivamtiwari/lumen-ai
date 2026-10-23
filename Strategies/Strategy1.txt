@@ -1,0 +1,547 @@
+# Technical planning document: XRP Ledger money-laundering detection hackathon
+
+Planning phase only · No code changes or implementation performed
+
+The immediate objective is to design an evidence-based, reproducible machine-learning solution for the XRP Ledger money-laundering detection challenge, using the three training transcripts as the initial source of requirements.
+
+One important distinction: the available context describes the challenge and its constraints, but it does not yet establish the actual performance of a model, the exact dataset schema, or a specific implementation defect. Consequently, this plan separates confirmed requirements from hypotheses that must be investigated when the actual challenge files and repository are available.
+
+## 1. Problem statement and intended outcome
+
+### The problem
+
+Develop a model that assigns a suspiciousness score to each eligible transaction in an unseen dataset, using labelled training transactions and the surrounding financial activity.
+
+The core challenge is identifying suspicious money flows across connected wallets and time, rather than treating every transaction as an isolated classification problem.
+
+## Target system
+
+Raw challenge files
+
+Transactions · Transfers · Rates · Blocks · Labels · README
+
+Data validation and reconstruction
+
+Schema checks · joins · amounts · timestamps · asset identities
+
+Transaction and wallet features
+
+Timing · graph structure · flow patterns · asset conversions
+
+Baseline → validated models → calibrated scores
+
+Reproducible submission
+
+Executable source · Dependencies · Methodology · CSV scores
+
+### Intended outcome
+
+A solution that:
+
+- Correctly follows the challenge's exact target and submission contract.
+- Generalises to hidden laundering patterns rather than memorising the training examples.
+- Distinguishes suspicious behaviour from legitimate activity that looks similar.
+- Uses the available data efficiently within the hackathon's time and computational constraints.
+- Produces reproducible, valid outputs and an explainable methodology.
+
+The primary optimisation target must ultimately be the organiser's actual scoring function, not a generic metric selected before the scoring rules are known.
+
+## 2. Existing system and available evidence
+
+The three uploaded transcripts provide the initial domain and operational context.
+
+Source A — Money-laundering domain training
+
+The first transcript explains the distinction between transaction fraud and laundering, the placement/layering/integration stages, common wallet-flow patterns, and the importance of contextual analysis.
+
+Its central warning is that a suspicious pattern is not proof of laundering.&#x20;
+
+Pasted text(20261023-180443).txt
+
+
+
+Source B — Challenge setup, evaluation and AI workflow
+
+The second transcript describes synthetic data in a real-world XRP Ledger-like format, approximately 40,000 labelled training transactions, an unseen dataset, a live leaderboard, submission requirements and the need to avoid overfitting.&#x20;
+
+Pasted text (2)(3).txt
+
+
+
+It also recommends exploring the data before choosing a model, establishing a baseline, and using AI iteratively instead of blindly asking it to solve everything in one attempt.&#x20;
+
+Pasted text (2)(3).txt
+
+
+
+Source C — XRP Ledger technical workshop
+
+The third transcript covers wallet addresses, ledger records, transaction fields, issued assets, transaction types, API access, parsing amounts, partial payments, failed transactions and account deletion.&#x20;
+
+Pasted text (3)(1).txt
+
+
+
+It highlights an important engineering requirement: XRP amounts and issued-token amounts have different representations, and token identity includes both currency and issuer.&#x20;
+
+Pasted text (3)(1).txt
+
+
+
+### What has and has not been inspected
+
+The three transcripts have been reviewed through their available contents and targeted retrieval of relevant passages. The original uploads contain transcription errors, and some content is truncated in the excerpts currently available.
+
+No actual challenge dataset, project repository, model implementation, error log, scoring website or submission template has yet been established as available evidence in this analysis.
+
+Therefore, I can formulate the system design and investigation plan now, but I cannot honestly claim to have identified a specific code defect or measured the performance of an existing model.
+
+## 3. Requirements, constraints, assumptions and dependencies
+
+### 3.1 Confirmed requirements from the training material
+
+| Requirement                             | Evidence or implication                                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Label individual transactions           | The trainers explicitly distinguish scoring transactions from reasoning about transfers and flows.         |
+| Use contextual money-flow information   | Wallet relationships, timing, amounts and conversions are relevant.                                        |
+| Handle synthetic ledger data            | The challenge data imitates a real XRP Ledger-style format.                                                |
+| Avoid overfitting                       | Training and hidden-set difficulty distributions may differ.                                               |
+| Use AI transparently                    | AI assistance is permitted but must be disclosed.                                                          |
+| Build the solution on the hackathon day | Prebuilt final solutions are not permitted according to the transcript.                                    |
+| Ensure reproducibility                  | Provide source, run commands, dependencies, seeds where relevant, and version information.                 |
+| Produce the required outputs            | Submit a code archive and a score CSV using the organiser's exact schema.                                  |
+| Stay within size limits                 | The transcript states a CSV limit of 12 MB and a methodology limit of 8 MB, under 10 slides or four pages. |
+
+The original organiser documentation must confirm these details before submission; the transcript is not a substitute for the final rules.
+
+### 3.2 Technical constraints to verify
+
+- Dataset: Exact files, row counts, column types, missing values, identifiers and label distribution.
+- Target: Label meaning, eligible transactions, score interpretation and whether the required output is a probability or another continuous score.
+- Data relationships: Keys linking transactions, transfers, blocks, exchange rates and labels.
+- Temporal boundaries: Whether a wallet's seven-day history is calculated relative to each transaction, a fixed reference date, or another window.
+- Execution environment: Available libraries, Python version, network access, CPU/RAM limits and submission runtime.
+- Evaluation: Official metric, thresholds, scoring weights, validation restrictions and submission limits.
+
+### 3.3 Assumptions requiring verification
+
+1. The task is primarily supervised binary classification.
+2. The unseen set follows the same basic schema as the training set.
+3. Graph and temporal features can be constructed from the provided records without external data.
+4. Training labels refer to individual transactions, even though the underlying laundering behaviour spans multiple transactions.
+5. The score should be continuous in the interval \\([0,1]\\).
+
+These are working assumptions, not established facts. In particular, the actual label semantics and scoring contract take precedence over the assumptions above.
+
+### 3.4 Dependencies
+
+The proposed workflow depends on access to:
+
+- The full challenge dataset and README.
+- The official submission specification and scoring rules.
+- The original project code, if any.
+- The approved runtime and installed libraries.
+- The permitted AI tools and their disclosure requirements.
+
+The actual dependency versions, available hardware and external-service permissions remain unknown.
+
+## 4. Root-cause analysis and evidence-based investigation
+
+There is no specific observed failure to diagnose yet. Instead, the initial investigation should test the following plausible failure modes.
+
+H1
+
+Incorrect target or row alignment
+
+Evidence to collect: label counts, unique transaction IDs, joins, duplicate keys and row counts before and after every merge.
+
+Why it matters: an otherwise strong model can fail if labels become misaligned or the wrong records are scored.
+
+H2
+
+Incorrect asset or amount handling
+
+Evidence to collect: raw amount examples, issued-token structures, issuer identities, conversion rates and failed transaction records.
+
+Why it matters: comparing unlike assets, misinterpreting drops or ignoring partial payments can corrupt features.
+
+H3
+
+Data leakage or unrealistic validation
+
+Evidence to collect: feature-generation timestamps, label provenance, train/validation overlap, wallet overlap and duplicate transaction fingerprints.
+
+Why it matters: random splits may overstate generalisation when closely related transactions appear on both sides.
+
+H4
+
+Incomplete representation of laundering behaviour
+
+Evidence to collect: per-label feature distributions, representative transaction traces and errors grouped by flow pattern.
+
+Why it matters: isolated transaction features may miss multi-wallet cycles, fan-in/fan-out and complex irregular networks.
+
+H5
+
+Overfitting and unstable predictions
+
+Evidence to collect: out-of-fold scores, calibration, seed sensitivity, class-specific errors and performance across temporal or group-based folds.
+
+Why it matters: the training material explicitly warns that the hidden set's difficulty distribution may differ from training.
+
+### Investigation order
+
+The first checks should be data integrity and target alignment, followed by leakage and validation design. Model complexity should only be investigated after these fundamentals pass.
+
+For every hypothesis, record:
+
+1. The suspected cause.
+2. Evidence that would support or reject it.
+3. A minimal diagnostic experiment.
+4. The observed result.
+5. The decision resulting from that evidence.
+
+This avoids treating a plausible explanation as an established root cause.
+
+## 5. Alternative solutions and technical trade-offs
+
+The most appropriate model family depends on the actual data structure, feature coverage and scoring function.
+
+| Approach                               | Advantages                                                                                | Limitations                                                  | Planned role                 |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------- |
+| Rules and domain heuristics            | Fast, interpretable, useful for sanity checks                                             | Brittle; legitimate activity can resemble laundering         | Diagnostic baseline          |
+| Logistic regression                    | Simple, stable, easy to interpret                                                         | May miss nonlinear interactions                              | Reference model              |
+| Gradient-boosted trees                 | Strong candidate for mixed tabular data and nonlinear relationships                       | Requires careful validation and feature engineering          | Primary candidate            |
+| Random forest or extra trees           | Captures nonlinearities; useful comparison                                                | May be less effective than boosting on some tabular problems | Alternative benchmark        |
+| Graph-derived features + tabular model | Represents wallet connections and flow structure without requiring a graph neural network | Feature construction can be expensive and leakage-prone      | Recommended feature strategy |
+| Graph neural network or sequence model | Can model complex relationships directly                                                  | Greater implementation, tuning and validation complexity     | Conditional experiment only  |
+| Ensemble of validated models           | May improve robustness and ranking                                                        | Can increase runtime and overfit validation choices          | Only if evidence supports it |
+
+### Recommended modelling strategy
+
+Start with a strong tabular baseline, likely gradient-boosted trees, while engineering graph- and time-derived features from the available ledger records.
+
+This is a recommendation, not a claim that any model has already been trained or that boosting will necessarily win.
+
+The advantages are practical: tabular models can use rich domain features, are comparatively easy to validate, and can be trained within a limited hackathon window. A graph neural network should not be the first implementation unless the dataset structure or baseline results provide a compelling reason.
+
+## 6. Recommended solution architecture
+
+The proposed system should separate data parsing, feature generation, training, validation and submission.
+
+\#chatgpt-mermaid-\_r_h7\_{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;fill:rgb(237, 237, 237);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#chatgpt-mermaid-\_r_h7\_ .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-\_r_h7\_ .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-\_r_h7\_ .error-icon{fill:rgb(48, 48, 48);}#chatgpt-mermaid-\_r_h7\_ .error-text{fill:rgb(237, 237, 237);stroke:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ .edge-thickness-normal{stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .edge-thickness-thick{stroke-width:3.5px;}#chatgpt-mermaid-\_r_h7\_ .edge-pattern-solid{stroke-dasharray:0;}#chatgpt-mermaid-\_r_h7\_ .edge-thickness-invisible{stroke-width:0;fill:none;}#chatgpt-mermaid-\_r_h7\_ .edge-pattern-dashed{stroke-dasharray:3;}#chatgpt-mermaid-\_r_h7\_ .edge-pattern-dotted{stroke-dasharray:2;}#chatgpt-mermaid-\_r_h7\_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_h7\_ .marker.cross{stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_h7\_ svg{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;}#chatgpt-mermaid-\_r_h7\_ p{margin:0;}#chatgpt-mermaid-\_r_h7\_ .label{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ .cluster-label text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ .cluster-label span{color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ .cluster-label span p{background-color:transparent;}#chatgpt-mermaid-\_r_h7\_ .label text,#chatgpt-mermaid-\_r_h7\_ span{fill:rgb(237, 237, 237);color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ .node rect,#chatgpt-mermaid-\_r_h7\_ .node circle,#chatgpt-mermaid-\_r_h7\_ .node ellipse,#chatgpt-mermaid-\_r_h7\_ .node polygon,#chatgpt-mermaid-\_r_h7\_ .node path{fill:rgb(9, 23, 44);stroke:rgb(31, 78, 148);stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .rough-node .label text,#chatgpt-mermaid-\_r_h7\_ .node .label text,#chatgpt-mermaid-\_r_h7\_ .image-shape .label,#chatgpt-mermaid-\_r_h7\_ .icon-shape .label{text-anchor:middle;}#chatgpt-mermaid-\_r_h7\_ .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .rough-node .label,#chatgpt-mermaid-\_r_h7\_ .node .label,#chatgpt-mermaid-\_r_h7\_ .image-shape .label,#chatgpt-mermaid-\_r_h7\_ .icon-shape .label{text-align:center;}#chatgpt-mermaid-\_r_h7\_ .node.clickable{cursor:pointer;}#chatgpt-mermaid-\_r_h7\_ .root .anchor path{fill:rgb(175, 175, 175)!important;stroke-width:0;stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_h7\_ .arrowheadPath{fill:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_h7\_ .edgePath .path{stroke:rgb(175, 175, 175);stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .flowchart-link{stroke:rgb(175, 175, 175);fill:none;}#chatgpt-mermaid-\_r_h7\_ .edgeLabel{background-color:rgb(0, 0, 0);text-align:center;}#chatgpt-mermaid-\_r_h7\_ .edgeLabel p{background-color:rgb(0, 0, 0);}#chatgpt-mermaid-\_r_h7\_ .edgeLabel rect{opacity:0.5;background-color:rgb(0, 0, 0);fill:rgb(0, 0, 0);}#chatgpt-mermaid-\_r_h7\_ .labelBkg{background-color:rgba(0, 0, 0, 0.5);}#chatgpt-mermaid-\_r_h7\_ .cluster rect{fill:rgb(48, 48, 48);stroke:rgba(255, 255, 255, 0.15);stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .cluster text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ .cluster span{color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:12px;background:rgb(48, 48, 48);border:1px solid rgba(255, 255, 255, 0.15);border-radius:2px;pointer-events:none;z-index:100;}#chatgpt-mermaid-\_r_h7\_ .flowchartTitleText{text-anchor:middle;font-size:18px;fill:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_h7\_ rect.text{fill:none;stroke-width:0;}#chatgpt-mermaid-\_r_h7\_ .icon-shape,#chatgpt-mermaid-\_r_h7\_ .image-shape{background-color:rgb(0, 0, 0);text-align:center;}#chatgpt-mermaid-\_r_h7\_ .icon-shape p,#chatgpt-mermaid-\_r_h7\_ .image-shape p{background-color:rgb(0, 0, 0);padding:2px;}#chatgpt-mermaid-\_r_h7\_ .icon-shape .label rect,#chatgpt-mermaid-\_r_h7\_ .image-shape .label rect{opacity:0.5;background-color:rgb(0, 0, 0);fill:rgb(0, 0, 0);}#chatgpt-mermaid-\_r_h7\_ .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#chatgpt-mermaid-\_r_h7\_ .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#chatgpt-mermaid-\_r_h7\_ .node .neo-node{stroke:rgb(31, 78, 148);}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node rect,#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].cluster rect,#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node polygon{stroke:url(#chatgpt-mermaid-\_r_h7\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].swimlane.cluster rect{filter:none;}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node path{stroke:url(#chatgpt-mermaid-\_r_h7\_-gradient);stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node .neo-line path{stroke:rgb(31, 78, 148);filter:none;}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node circle{stroke:url(#chatgpt-mermaid-\_r_h7\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].node circle .state-start{fill:#000000;}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].icon-shape .icon{fill:url(#chatgpt-mermaid-\_r_h7\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_h7\_ [data-look="neo"].icon-shape .icon-neo path{stroke:url(#chatgpt-mermaid-\_r_h7\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_h7\_ .node text{font-size:14px;font-weight:600;letter-spacing:normal;fill:rgb(153, 206, 255);}#chatgpt-mermaid-\_r_h7\_ .edgeLabels text{font-size:13px;font-weight:600;letter-spacing:-0.08px;fill:rgb(153, 206, 255);}#chatgpt-mermaid-\_r_h7\_ .node tspan[font-weight="normal"],#chatgpt-mermaid-\_r_h7\_ .edgeLabels tspan[font-weight="normal"]{font-weight:600;}#chatgpt-mermaid-\_r_h7\_ .edgeLabel .label rect{opacity:1;rx:13px;ry:13px;fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .node rect,#chatgpt-mermaid-\_r_h7\_ .node circle,#chatgpt-mermaid-\_r_h7\_ .node ellipse,#chatgpt-mermaid-\_r_h7\_ .node polygon,#chatgpt-mermaid-\_r_h7\_ .node path{fill:rgb(0, 40, 77);stroke:rgba(255, 255, 255, 0.1);stroke-width:1px;}#chatgpt-mermaid-\_r_h7\_ .node rect{rx:16px;ry:16px;}#chatgpt-mermaid-\_r_h7\_ .node.mermaid-decision .label-container{fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-dasharray:2,2;}#chatgpt-mermaid-\_r_h7\_ .edgePaths .flowchart-link{stroke:rgb(175, 175, 175);stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;}#chatgpt-mermaid-\_r_h7\_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_h7\_ :root{--mermaid-font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";}Challenge files and rulesSchema and integrity auditCanonical transaction tableLeakage-safe feature builderBaseline modelOut-of-fold evaluationMeets acceptance criteria?Error analysis and targetedexperimentsFinal model and scoregenerationSubmission contractvalidationReproducible package andmethodologyNoYes
+
+### Design principles
+
+- One canonical row per eligible transaction, keyed by a verified identifier.
+- Explicit parsing and validation for each supported amount representation.
+- Deterministic feature construction with documented time windows.
+- A single reusable feature pipeline for validation and final inference.
+- A consistent schema between training and unseen data.
+- A model output that satisfies the official scoring contract.
+- A reproducible run command that rebuilds the submission from the supplied inputs.
+
+The exact module names and directory structure should be determined after inspecting the existing repository rather than imposed prematurely.
+
+## 7. Step-by-step implementation plan
+
+The following is the proposed execution sequence. Each stage has an explicit purpose, validation gate and failure response. No stage has been implemented.
+
+## 01
+
+Audit the complete problem specification
+
+Inputs: README, submission rules, dataset inventory, existing repository.
+
+- Establish the target, identifier, score format, official metric and submission interface.
+- Inventory every file, dependency, configuration and existing implementation.
+- Record confirmed constraints and unresolved details.
+
+Validation gate: Every required input and output is accounted for. No target or scoring assumptions remain unmarked.
+
+## 02
+
+Profile and validate the data
+
+Inputs: all raw files, labels, transaction identifiers and documented relationships.
+
+- Measure row counts, missingness, duplicates, class balance, data types and time coverage.
+- Check join cardinality and orphaned records.
+- Inspect asset representations, failed transactions and malformed JSON fields.
+- Verify that every target label maps to the intended transaction.
+
+Validation gate: Reconciled counts, documented exclusions and no unexplained target misalignment.
+
+## 03
+
+Construct a leakage-safe validation strategy
+
+Inputs: timestamps, wallet identities, label provenance and transaction relationships.
+
+- Establish a fixed seed and a reproducible fold assignment.
+- Compare stratified validation with temporal or wallet-group-aware validation where feasible.
+- Ensure features use only information legitimately available at prediction time.
+- Fit transformations using training folds only.
+
+Validation gate: No label-derived features, future-information leakage or accidental duplication across folds. The chosen split must reflect the challenge's intended generalisation setting.
+
+## 04
+
+Build a canonical transaction representation
+
+Inputs: transaction records, transfer details, exchange rates and ledger metadata.
+
+- Normalize transaction IDs, sender/receiver addresses and timestamps.
+- Parse XRP amounts and issued assets using their distinct formats.
+- Represent an asset using the appropriate currency and issuer identity.
+- Separate attempted transactions from successful transfers where the schema supports this distinction.
+- Reconcile conversion values and missing rates without silently substituting zero.
+
+Validation gate: Known examples parse correctly; amount conversions and join results pass independent consistency checks.
+
+## 05
+
+Engineer transaction, temporal and graph features
+
+Inputs: canonical transactions and permitted wallet history.
+
+- Transaction: amount, log-scaled amount, asset, transaction type and success status.
+- Temporal: hour, weekday, time since previous activity and short-window activity counts.
+- Wallet: incoming/outgoing counts, volumes, counterparties and balance-flow proxies where valid.
+- Graph: fan-in/fan-out, repeated paths, cycle indicators, hop depth and connectivity.
+- Flow: rapid pass-through, splitting, merging, repeated transfers and asset conversion sequences.
+- Context: relevant seven-day aggregates if supported by the actual schema.
+
+Validation gate: Features have documented definitions, correct time boundaries, sensible distributions and no target leakage.
+
+## 06
+
+Train the baseline and establish a benchmark
+
+Inputs: validated features and leakage-safe folds.
+
+- Establish a simple reference model.
+- Train a gradient-boosted tree candidate if compatible with the runtime.
+- Compare against a domain-rule baseline.
+- Record the official score, precision-recall behaviour, confusion matrix and fold variability.
+
+Validation gate: The model outperforms the reference under the same validation protocol, or there is a documented explanation for retaining a simpler model.
+
+## 07
+
+Run targeted experiments
+
+Inputs: baseline results, out-of-fold predictions and error analysis.
+
+- Identify false positives and false negatives by pattern, asset, amount and time.
+- Add or remove one feature family at a time.
+- Compare class weighting, regularisation and limited hyperparameter tuning.
+- Evaluate calibration or blending only if it improves the actual objective.
+
+Validation gate: Each experiment has a stated hypothesis, a comparable benchmark and a recorded outcome. No change is retained solely because of one favourable split.
+
+## 08
+
+Train the final model and generate predictions
+
+Inputs: the selected model, full labelled training data and unseen transaction records.
+
+- Rebuild features using the validated pipeline.
+- Train using the approved final-data strategy.
+- Generate scores for exactly the required rows in the required order.
+- Verify finite scores and the required numeric range.
+
+Validation gate: Output identifiers and row counts match the official contract; no records are missing or duplicated.
+
+## 09
+
+Package and rehearse the submission
+
+Inputs: final source code, dependency manifest, run instructions and methodology.
+
+- Re-run from a clean environment or clean working directory.
+- Confirm reproducibility and resource requirements.
+- Validate file sizes, output columns and packaging rules.
+- Prepare a concise account of the data, features, experiments and limitations.
+- Disclose AI assistance as required.
+
+Validation gate: A clean execution produces a valid submission without manual editing or undeclared dependencies.
+
+### Proposed experiment discipline
+
+The workflow should use the trainers' recommendation to explore before modelling, and should maintain a record of each decision. For efficiency, each experiment should specify its hypothesis, changed variable, validation result, runtime and decision.
+
+The implementation order can be shortened if the hackathon clock requires it, but data integrity, a valid baseline, leakage checks and a working submission must not be sacrificed to sophisticated modelling.
+
+## 8. Edge cases, risks and mitigation
+
+| Risk                                              | Potential impact                | Mitigation                                                        |
+| ------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
+| XRP drops interpreted as whole XRP                | Incorrect amount features       | Validate conversion against known examples and ledger conventions |
+| Same token symbol, different issuers              | False asset equivalence         | Preserve issuer and currency identity                             |
+| Failed transactions included as completed flows   | False laundering signals        | Validate transaction result and actual delivered amount           |
+| Partial payments misinterpreted                   | Incorrect flow totals           | Inspect partial-payment semantics and delivered amounts           |
+| Missing or inconsistent exchange rates            | Invalid cross-asset comparisons | Preserve missingness; use documented conversion rules             |
+| Wallets shared by exchanges                       | Many legitimate flows flagged   | Add contextual features; avoid rules based solely on degree       |
+| Synthetic patterns differ from hidden patterns    | Poor generalisation             | Use robust validation and conservative feature selection          |
+| Future transactions leak into historical features | Inflated validation performance | Enforce prediction-time cutoffs                                   |
+| Multiple related wallets cross validation folds   | Overoptimistic performance      | Test group-aware validation                                       |
+| Small or imbalanced positive class                | Unstable estimates              | Use appropriate metrics and fold-level uncertainty                |
+| Feature joins multiply rows                       | Incorrect targets or scores     | Assert key uniqueness and join cardinality                        |
+| Large graph computation                           | Runtime or memory failure       | Profile early; use bounded windows and cached aggregates          |
+| Unsupported package or network dependency         | Submission failure              | Test in the actual permitted environment                          |
+| Incorrect CSV ordering or format                  | Invalid scoring                 | Validate against the official template                            |
+| Excessive model experimentation                   | No completed submission         | Reserve explicit time for final packaging and testing             |
+
+A particularly important domain distinction is that rapid movement, cycles, splitting and merging are signals for investigation, not definitive labels. The training material explicitly illustrates legitimate automated services and testing activity that can resemble laundering.&#x20;
+
+Pasted text(20261023-180443).txt
+
+
+
+## 9. Testing, validation and measurable acceptance criteria
+
+The exact numeric performance target cannot be set responsibly until the organiser's scoring function and baseline are available. The following criteria can nevertheless be established in advance.
+
+### 9.1 Data and pipeline tests
+
+| Test                 | Acceptance criterion                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| Schema validation    | All required columns and types satisfy the documented contract                                     |
+| Transaction identity | Every scored row maps to the correct transaction identifier                                        |
+| Join integrity       | No unexplained row multiplication or loss of required records                                      |
+| Amount parsing       | Known XRP and issued-token examples produce expected values                                        |
+| Timestamp handling   | Ordering and time-window boundaries pass explicit test cases                                       |
+| Feature availability | Every feature is derived from information permitted at prediction time                             |
+| Determinism          | Repeated runs with fixed seeds and unchanged inputs reproduce results within the defined tolerance |
+
+### 9.2 Model evaluation
+
+The official metric is the primary criterion. Supplementary metrics should diagnose the model's behaviour.
+
+- Precision-recall curve and average precision: useful when suspicious transactions are relatively rare.
+- Precision and recall at the organiser's operating threshold: measures false alarms versus missed suspicious activity if threshold-based evaluation is relevant.
+- ROC-AUC: useful as a supplementary ranking metric, but potentially misleading under severe class imbalance.
+- Calibration metrics: appropriate if the scores are intended to represent probabilities.
+- Fold variability: measures whether the results depend heavily on one split.
+
+A threshold should not be selected using the hidden labels. If the organiser evaluates continuous scores, preserving the ranking may matter more than selecting a binary threshold.
+
+### 9.3 Experimental acceptance criteria
+
+1. A valid baseline must be established before advanced experiments.
+2. Every candidate must be compared using the same validation protocol.
+3. The chosen model must meet or exceed the baseline on the official or closest valid proxy metric, with acceptable stability.
+4. Any performance improvement must be evaluated for leakage and fold sensitivity.
+5. The final model must be selected before inspecting any hidden labels.
+
+No numerical score improvement is promised at this stage because no model has been run.
+
+### 9.4 Submission acceptance tests
+
+### Release checklist
+
+Completion tracking
+
+#### 0/8
+
+The required output file is generated from a clean run.
+
+The output contains exactly the expected records.
+
+All scores are finite and lie in the required range.
+
+No labels have been manually assigned to unseen records.
+
+The source, dependencies and run commands are included.
+
+The methodology document meets the specified length and size limits.
+
+The final package complies with the organiser's AI disclosure rules.
+
+The submission has been checked against the official interface.
+
+These are planned acceptance tests, not completed test results.
+
+## 10. Expected deliverables and definition of completion
+
+The planned deliverables are:
+
+1. Problem and data audit: Verified schema, target definition, data relationships and constraints.
+2. Reproducible feature pipeline: Parsing, normalisation, temporal features and graph-derived features where justified.
+3. Baseline and evaluation report: Benchmark, validation methodology, fold-level metrics and error analysis.
+4. Selected model: Trained with a documented configuration and reproducible inference.
+5. Submission artifacts: Runnable source archive and score CSV following the official schema.
+6. Methodology document: Concise description of the approach, experimental evidence, limitations and AI usage.
+7. Final verification report: Test results, resource requirements, known limitations and confirmation of the exact deliverables.
+
+Completion means the solution can be reproduced, the generated outputs satisfy the official contract, the selected model has been evaluated without known leakage, and all submission requirements have been checked.
+
+A high leaderboard score is an objective, not a completion criterion that can be guaranteed in advance.
+
+### Recovery and rollback strategy
+
+Each accepted experiment should be versioned with its configuration, metrics and relevant code revision. If a new feature family or model degrades performance, revert to the last validated configuration rather than layering on unverified fixes.
+
+The final known-good baseline and a working submission generator should be preserved throughout development. This provides a safe recovery path if later experiments exceed the time budget or introduce integration failures.
+
+## 11. Unresolved questions and missing information
+
+These items must be resolved through inspection before implementation begins.
+
+### 1. Actual challenge files
+
+Critical
+
+Where are the complete dataset, README, labels, exchange-rate files and submission template? These are necessary to establish the real schema and data relationships.
+
+### 2. Official scoring rules
+
+Critical
+
+What is the exact evaluation metric, score interpretation, target definition and submission format? These determine the optimisation objective.
+
+### 3. Existing implementation
+
+Critical
+
+Is there already a codebase, notebook, feature pipeline, model, previous submission or set of errors? If so, its behaviour must be inspected before deciding what to change.
+
+### 4. Validation constraints
+
+High
+
+Are there prescribed splits, restrictions on external data, limits on submissions, or rules about temporal and wallet overlap?
+
+### 5. Execution environment
+
+High
+
+What Python version, packages, memory, CPU/GPU resources and runtime limits will be available on the hackathon machine?
+
+### 6. Remaining time and priorities
+
+High
+
+How much time is available for implementation and experimentation, and is the priority the best possible score, interpretability, or a balance of both?
+
+The critical questions are prerequisites to implementation, but they do not prevent us from agreeing on the overall execution strategy.
+
+## Final recommendation
+
+I recommend a data-first, leakage-safe, graph-informed tabular ML approach, with gradient-boosted trees as the primary candidate rather than an assumed winner.
+
+The order of execution should be:
+
+1. Inspect the complete files, repository and official rules.
+2. Verify the target, data relationships, amount handling and submission contract.
+3. Establish a valid baseline and leakage-safe validation methodology.
+4. Engineer temporal and wallet-flow features.
+5. Compare models and run targeted, measurable experiments.
+6. Generate the final scores, validate the submission and preserve a reproducible fallback.
+
+This approach balances potential predictive performance with engineering reliability, explainability and the limited time available during a hackathon.
+
+I will not begin implementation until you explicitly approve the plan.
+
+The next step is to make the complete challenge dataset, submission instructions and any existing code available for inspection. Once those are examined, the plan can be refined against actual evidence before a single implementation change is made.

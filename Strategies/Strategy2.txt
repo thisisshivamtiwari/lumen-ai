@@ -1,0 +1,170 @@
+The earlier plan was generic. It could apply to any ML task and ignored several things the trainers said that shape the strategy. Here is a sharper version built around those details.
+
+What the transcripts imply that the old plan missed
+The score is probably thresholded, not just a ranking. The trainer described scores “above 50” counting as flagged, with precision-style credit (2 of 3 correct = 0.67) weighted by easy, medium and hard cases. The old plan said ranking might matter more than a threshold. I think calibration matters instead, because 0.5 is likely the cut-off. The transcript is garbled here, so confirm this at the morning briefing.
+The data is synthetic with injected scenarios. The trainer mentioned about 18 fan-in scenarios, each with 4 to 7 senders paying one collector within about 5 minutes. Training is mostly easy and the hidden set has an unknown, harder mix. A model that learns generator tells will score well on the leaderboard-visible easy cases and collapse on the hard ones.
+The hard negatives are named. Exchange-like hubs (94 in from 66 senders, 95 out to 64), a pass-through that differs by 15 drops (the fee), and 40 tiny 0.0001 loops that are probably bot tests. These probably exist in the data as legitimate-but-lookalike cases. Learn them deliberately.
+Labels are on transactions, but laundering is a flow. So the model needs context from neighbouring transactions, not just row-level features.
+Better architecture: two-stage, graph-aware
+
+Stage 0: Parse. Normalise amounts to USD, with drops handled, asset identity as currency plus issuer, and failed transactions flagged. Join everything and assert row counts at every join.
+
+Stage 1: Per-transaction model (LightGBM or XGBoost). Features:
+
+Amount (log, USD), asset, hour, weekday, and the other time features the trainer encouraged
+Sender and receiver degree, in and out volume, and counterparty counts in the 7-day window, computed only from data before each transaction (no future leakage)
+Pass-through ratio (in versus out within minutes), residual after the fee, and time-to-forward
+Motif counts around the edge: fan-in/out size within a 5-minute window, cycle membership, hop depth, and the number of distinct assets along the path
+Hub-ness features, so the model can separate exchange-like hubs from mule structures
+
+Stage 2: Graph smoothing. For each transaction, add the stage-1 out-of-fold scores of its neighbours (same sender, same receiver, upstream and downstream hops) and train a second small model. This turns “one edge looks odd” into “this edge sits in a suspicious flow”, which is the hard-case lever. A weak edge in a strong chain gets lifted, and an isolated high-volume edge in a legitimate hub does not.
+
+Why not a GNN? It is higher risk for a single day, and Stage 2 captures most of the benefit.
+
+Validation that matches the shift
+Group-aware CV. Recover scenario groups, for example connected components within time windows, or scenario IDs if the labels include them. Never split a scenario across folds.
+Adversarial validation. Train a classifier to tell train from the unlabelled test set. Features that separate them easily are generator artefacts, so drop or coarsen them.
+Per-pattern error report. Break recall and precision down by pattern, since the hidden set is hard-heavy.
+Calibrate with isotonic regression on out-of-fold scores, then check the score distribution against the 0.5 cut-off. If the README gives difficulty tags, upweight medium and hard rows.
+Day plan (time-boxed, adjust to the actual length)
+Block	Goal
+0:00–0:45	Read the README, then use AI to profile the data, check join counts, and find the labelled patterns by hand (fan-in, cycles) without a model
+0:45–1:30	Baseline LightGBM on row features, group CV, submit a valid CSV so the leaderboard and format are confirmed
+1:30–3:30	Add window and motif features, one family at a time, keeping only what helps grouped CV
+3:30–4:30	Stage 2 graph smoothing, calibration, threshold check
+4:30–5:30	Error analysis on lookalike hubs and loops, then fix
+Last 60 min	Clean-room rerun, seeds fixed, requirements pinned, methodology (under 4 pages), AI disclosure, size checks
+
+Always keep a last known-good submission, and freeze the model well before the deadline.
+
+Process rules from the trainer
+Keep one plan document and one decision log. Ask AI for alternatives at each decision and judge them yourself.
+Ask AI to list findings, not to “find bugs”, because it will invent them.
+Keep context short. Restart sessions with a summary if reasoning degrades.
+Don’t one-shot the whole challenge with an agent. You have to be able to explain every part.
+Tonight and tomorrow
+
+The rules say the solution must be built on the day, so tonight should be limited to the following:
+
+Set up the environment (Python, LightGBM, pandas or polars, networkx) and a Claude Code or Codex setup with a fresh plan file.
+Copy this plan into that file.
+Do not write solution code tonight.
+
+Questions for the mentors:
+
+Exact scoring formula and whether 0.5 is the threshold
+Whether the labels include scenario, flow or difficulty IDs
+Which transactions are eligible
+Submission limits per hour
+Whether the test set shares wallets with training
+
+The main risk is that the plan assumes the labels are structured enough to recover groups. If they aren’t, fall back to time-window plus connected-component pseudo-groups.
+
+Do you want me to turn this into the one-page plan file for your coding agent?
+
+This deck changes the plan, and it corrects two things I told you earlier.
+
+What I got wrong
+
+I assumed a 0.5 threshold, and the scoring is actually ranking-based. The score is 100 × Average Precision (AP), computed on how you order all 40,101 test transactions. Only the order counts, and scores don’t need to be probabilities. So calibration and threshold tuning, which I recommended earlier, are pointless. The deck also warns that equal scores are grouped as one block, so you want continuous scores with no ties. The leaderboard also shows precision and recall in your top 1% (402 transactions) and ROC-AUC, but those don’t affect your rank.
+
+The data package already includes helper code. The deck mentions a supplied payments.py (builds one edge per payment, with USD value) and a baseline.py (gives you a valid file and a number to beat). So don’t rebuild the amount parser tonight. Everything I listed for amounts, drops, issuers and JSON fields is covered by payments.py, and the deck lists the same six traps.
+
+What the deck tells us
+Files: transactions.parquet, transfers.parquet, blocks.parquet, market_rates.csv, and labels.csv (train only). Key columns named include TRANSACTION_HASH, SOURCE_VALUE, TOKEN_ADDRESS, SYMBOL, DELIVERED_AMOUNT and EXTRA_TRANSACTION_FIELDS.
+Size: 40,131 train and 40,101 test transactions, each covering 7 days.
+Difficulty of suspicious cases: 64% easy, 18% medium, 18% hard. So over a third of the positives are medium or hard, and AP is a ranking score, so a few hard positives ranked low will hurt.
+Hard means history: the deck says hard cases span many payments and changing counterparties, so use whole flows, not single amounts.
+The test has variations absent from training, and a few cases are deliberately ambiguous. This confirms that overfitting to training scenarios is the main danger.
+Both normal and suspicious sides use conversions, so a currency-hop feature won’t separate them by itself.
+Fees: every transaction burns 10 to 15 drops, even token payments. A conversion makes 2 or 3 transfer rows.
+The deck corrects the transcript on the lookalikes. The pass-through example is 19 seconds, not 90, and the loop is 40 payments of 0.00001 XRP, not 0.0001. Use the deck’s numbers.
+Each shape page lists “signals to compute”. Your AI agent can turn those directly into features, such as distinct senders in a short window, exit amount close to the sum of deposits, and the time between last deposit and exit.
+Logistics: submit by 16:30 London, with 50 uploads per team per UTC day. The leaderboard shows your best completed run, provisionally.
+One rule to take seriously
+
+The deck says libraries and pre-trained models are fine, but that “the work being judged is done during the hackathon” (this is from my reading of the slide, not an exact quote). You told me the organisers emailed that you can start coding early. I can’t see that email, so I’d do three things: 
+luma
+
+Keep the email and be ready to cite it.
+Prepare tooling, harnesses and general feature code tonight. Don’t train or tune a final model on the real data until the event.
+Disclose what was prepared in advance in your methodology.
+
+The deck also says you must name the model and provider, and include prompts and settings. So save every prompt you use with your AI agent from tonight onward.
+
+Two earlier ideas are out:
+
+Don’t use IBM’s AMLworld data as a proxy. The deck says there should be no outside transaction or reference data without approval. Public docs and papers are fine, so keep reading papers, but don’t train or test on outside transaction data unless the organisers approve it.
+Skip the schema-agnostic column-mapping config. You now know the key column names, and payments.py gives you the edge table.
+What to build tonight
+
+Build everything downstream of the edge table (sender, receiver, USD amount, time, asset, hash, fee). That is the part payments.py hands you, and it’s where your edge comes from.
+
+Submission toolkit. A validator that checks TRANSACTION_HASH,score, exactly 40,101 rows with each hash once, scores in [0, 1], and the CSV under 12 MiB. A zip builder that stays under 8 MiB with a requirements.txt and no installed packages. A local metric script that prints AP (×100), top-1% precision and recall, and ROC-AUC, matching the leaderboard’s display.
+Edge-table synthetic generator. About 40k edges over 7 days, with the eight shapes injected as easy, medium and hard, and tagged by scenario. Include the lookalikes: an exchange hub, fee-sized pass-throughs, and tiny repeated loops. Then add a “test variation” version with changes your training generator doesn’t make, so you can check how well features survive the shift. Your features will do well on your own generator, so use it to catch bugs and compare features, not to judge absolute scores.
+Feature library on the edge table, using only earlier information per wallet: degree and distinct counterparties in 1-minute, 5-minute, 1-hour and 7-day windows, and pass-through ratio with a fee tolerance. Add amount conservation, hold time, reciprocity, bounded cycle closure, hub score, and the “new wallet that does nothing else” signals from the deck.
+Flow-level scoring. Build connected groups of wallets within time windows, compute group features (size, depth, value in versus value out, time spread), and push the group score down to each transaction. This targets the medium and hard 36%.
+Validation harness. Group-aware cross-validation (no scenario split across folds), out-of-fold predictions, AP overall and per difficulty or pattern, and adversarial validation to find features that merely identify the generator. Rank-average several seeds and models at the end. That is safe for AP and breaks ties.
+Agent setup and disclosure. A prompt log file, plan.md, decisions.md, and a methodology template under 4 pages. Add a permissive open-source licence file, because the deck says you must release under an approved licence by the deadline and every team member accepts the terms.
+Questions for the mentors tomorrow
+Does labels.csv include scenario IDs or difficulty tags? Those would make grouped validation and per-difficulty AP easy.
+Do train and test share wallets, or are they separate worlds?
+Is the ambiguous-case handling described in the README?
+
+Do you want me to start on the generator and the submission toolkit now? They’re the two pieces everything else depends on.
+
+What is meamning of you can't see section?
+
+That’s slide 7 of the deck, “What the data shows, and what it hides”. The “You cannot see” column lists four things:
+
+Names or identity checks. A wallet is just an address starting with r. You don’t know who owns it, whether it’s a person, a company or an exchange, and there’s no KYC information. This is why you judge wallets by behaviour (timing, amounts, who they connect to) and not by who they are.
+Why a payment was made. The data has no memo explaining the purpose, such as “rent” or “invoice”. Two identical payments can be a laundering hop or a normal business transfer, and nothing in the data says which. That’s why the deck says a pattern is not proof, and why context separates the two.
+Bank accounts or cash. You only see money on the ledger. Where it came from before entering (placement, such as cash turned into crypto) and where it goes after leaving (cashing out through an exchange) are both invisible. The deck says the challenge data is mostly about the middle part, layering: money moving between wallets.
+Anything outside the 7-day window. Each split (train and test) covers 7 days. A wallet’s history before the window starts, or after it ends, doesn’t exist for you. A wallet that looks new to you may have been active for months, and a flow that continues past day 7 gets cut off.
+
+What this means for your model:
+
+Don’t try to guess identity. Build features from behaviour only.
+Treat every suspicious-looking pattern as a hypothesis, and include features that separate lookalikes such as exchange hubs from mule structures.
+Be careful with “new wallet” and “does nothing else” features. A wallet may only look new because its earlier history is outside the window. The edges of the window (first and last day) can produce misleading signals, so check whether the model is leaning on them.
+The same limit applies to the labels. The deck says a suspicious label describes the scenario’s intent, not a rule for real life, so the model is learning how the generator created laundering, not how real laundering behaves.
+
+Do you want me to go through the other slides the same way, or start on the generator and submission toolkit?
+
+What are the implecations of 7 day data only? is this important metric?
+
+No, it’s not a metric. The metric is Average Precision. The 7-day limit is a property of the data, and it’s worth knowing because it changes how you design features. The deck says each split (train and test) has 7 days of activity, and that you can’t see anything outside it.
+
+What it changes
+
+1. You can use the whole week, including the future, for each transaction.
+I told you earlier to build features only from earlier transactions to avoid leakage. For this hackathon that advice is too cautious. The test file is scored all at once as a static ranking, so nothing forbids using later transactions. A fan-in deposit is much more suspicious if you can see the large exit payment that follows, and a cycle can only be recognised once it closes. So compute graph and flow features over the full 7-day graph of each split, with the same code on train and test separately. The leakage you do need to avoid is label leakage, for example features built from labels.csv.
+
+2. Weekday, month and quarter features are nearly useless.
+The trainer suggested quarter of the year and day of the week. Within 7 days, quarter is constant and weekday has at most 7 values. Hour of day can still help, but use relative time (hours since window start) with care. If train and test are different weeks, absolute timestamps and weekday could encode generator quirks, not laundering behaviour.
+
+3. Edge effects can fool the model.
+Wallets that were active before day 1 look “new”. Flows that start late on day 7 look unfinished, and flows that were already underway on day 1 look as if they began from nothing. The deck’s “new wallet that does nothing else” signal is partly a window artefact. Add distance-from-start and distance-to-end as features, and check whether feature importance leans on them. Remove them if it does.
+
+4. Long-horizon features are impossible, but multi-hour and multi-day ones matter.
+My earlier window list (1 minute, 5 minutes, 1 hour, 7 days) misses the middle. The deck says hard cases span many payments and changing counterparties, and the “patterns over time” item says some flows only make sense across the whole week. Add 6-hour, 24-hour and 72-hour windows, plus whole-component features for the medium and hard 36% of positives.
+
+5. Per-wallet history is thin.
+With about 40k transactions in a week, most wallets will have few payments. So “this wallet is behaving unusually versus its own baseline” is weak signal. Graph structure and component-level features (shape, value in versus out, timing spread) should carry more weight than wallet-level time series.
+
+6. Don’t use wallet identity as a feature.
+If train and test are different weeks, wallet IDs may not overlap, and target-encoding a wallet won’t transfer. Use only behavioural and structural features.
+
+7. Time-based validation is weak.
+With one 7-day window, you can’t hold out “the future” in a meaningful way. Use group-aware cross-validation by connected component or scenario, not by time.
+
+What I don’t know
+
+I read “7 days per split” as the full span of each file, but slide 7’s “Every wallet’s history in the window” might also mean a rolling per-wallet window. The README should say which. Ask the mentors:
+
+Are train and test different weeks, and do they share any wallets?
+Does the data start and end with flows cut off, or were the scenarios generated entirely inside the window?
+
+If the scenarios sit fully inside the window, the edge-effect warning matters less, but it’s cheap to check.
+
+Do you want me to update the feature plan for the generator and feature library with these windows and the no-future-restriction change?
