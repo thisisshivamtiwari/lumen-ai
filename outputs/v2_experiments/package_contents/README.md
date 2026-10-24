@@ -1,0 +1,59 @@
+# Lumen Strategy 3 - V2 research package
+
+This is a reproducible local experiment package. Read methodology.md and acceptance.json before selecting a detector. No V2 predictions are included if promotion failed. V1 is protected; nothing is submitted or published by these commands.
+
+Python 3.12.13 on macOS arm64, 8 GB RAM, eight logical CPUs; CatBoost fits use four threads. Dependencies are pinned. The full limited experiment study takes approximately 15-25 minutes on the observed laptop; depth-8 runs are materially slower than depth-6. Exact observed timings are in the CSV evidence. Other hardware may differ.
+
+## Reproduce the verified baseline CSV
+
+Run from any directory; the supplied data paths must contain the official files. This run.py/config.json pair is the protected V1 algorithm copied into the research package, not an accepted V2. Choose a NEW output path:
+
+```sh
+python3.12 -m venv .research-venv
+.research-venv/bin/python -m pip install -r requirements.txt
+.research-venv/bin/python run.py --train /Applications/Softwares/Lumen.ai/data/training/train --test /Applications/Softwares/Lumen.ai/data/test --output /tmp/lumen-v1-reference-reproduction.csv
+```
+
+Expected CSV SHA256 on the verified platform: fd1c9f28fe391a39ac783129ed367132ae3dad2845683a6a9141516698a9a80f. Source/model hash manifests and exact original clean-environment command are included under evidence/. That result was actually observed, not inferred from a unit test.
+
+## Reproduce the finite model study from raw data
+
+Use a NEW, nonexistent workspace path. `prepare.py` refuses existing destinations, makes links to the supplied train/test files, builds label-free caches and regenerates the original baseline OOF comparisons. It never edits the linked input files. Commands below assume the current directory contains the extracted package source files:
+
+```sh
+V2_REPRO_DIR=/tmp/lumen-v2-reproduction-20261024
+.research-venv/bin/python prepare.py --workspace "$V2_REPRO_DIR" --train /Applications/Softwares/Lumen.ai/data/training/train --test /Applications/Softwares/Lumen.ai/data/test
+export LUMEN_WORKSPACE="$V2_REPRO_DIR"
+.research-venv/bin/python audit.py
+.research-venv/bin/python slice_uncertainty.py
+.research-venv/bin/python test_chronology.py
+.research-venv/bin/python feature_checks.py
+.research-venv/bin/python near_duplicates.py
+.research-venv/bin/python experiments.py
+.research-venv/bin/python stress_context.py
+.research-venv/bin/python confirm.py
+.research-venv/bin/python finish_report.py
+.research-venv/bin/python comparison_diagnostics.py
+```
+
+Do not run `prepare.py` against the existing project. Existing-project incremental commands use the already audited immutable V1 caches; clean-workspace commands above regenerate them. `experiments.py chrono chrono_no_static` can resume only those feature candidates after the first three candidate results exist. Initial development corrected a current-counterparty reference before any reported augmented-feature result; all released results use the corrected implementation.
+
+The original whole-package integrity script `integrity.py` additionally expects the official README/checksums and unlabelled practice split at their original data/training locations, plus protected V1 predictions; it is intended for the complete original project, not the minimal linked clean study. It records FEE in XRP and SOURCE_FEE in drops correctly. `audit.py` only writes a reproduction report if an actual baseline_reproduction.json evidence file is present; it does not fabricate fresh-environment proof in a new workspace.
+
+## Evaluation and interpretation
+
+A: exact V1 three cohort/scenario-grouped folds (seed 20261024), with shared unlabelled wallets/graph context. B0: disjoint supervised wallet endpoint halves (seed 20261029); cross-half edges have no supervised role, unlabelled graph remains visible. B1 seed 20261103 is reserved and opened only if primary gain >=1 percentage point. C: first five days of labels fit, last two days evaluate, full permitted seven-day context. D: annotation-only error slices. Neither B nor C is an official leaderboard result. Repeated A selection and limited group counts constrain confidence. Bootstrap intervals condition on fitted OOF predictions.
+
+The five predeclared changes are scaled regularized logistic regression (C=.1), CatBoost depth4, CatBoost depth8, V1 plus 190 local diversity/chronology features, and that augmented block without the 54 static graph/neighbour columns. There are no label-derived features, pseudo labels, score jitter or post-hoc blending. Test data is never used for feature or hyperparameter selection.
+
+Promotion requires >=.01 absolute mean A AP gain, gains in at least two folds, positive paired group-bootstrap lower bound, positive confirmation-seed gain, no >.02 absolute B/C AP regression, then clean raw-input reproduction and schema checks. These predeclared local thresholds are judgement calls, not a guarantee of competition performance. A failed early criterion keeps B1 untouched. No `v2_predictions.csv` is generated by this package when acceptance fails.
+
+## Files, data and disclosure
+
+Source, original pinned inference configuration, experiment definitions and aggregate evidence are included. Datasets, installed environments, fitted model weights and per-transaction training/OOF files are excluded. The full observable task prompt and AI disclosure are included; exact hidden provider model/sampling settings are unavailable and are not invented. Organiser helper and starter code retain their original rights; see THIRD_PARTY.md. The original material licence does not relicense supplied data or organiser code.
+
+Before any future user-approved entry, provide team/captain/member information, a concrete public repository version and complete disclosures. Terms require original submission material to be publicly accessible by the deadline. This package has not been published, uploaded or accepted by organisers. No test score is known.
+
+To regenerate the optional PDF after installing report-requirements.txt, run render_report.py with LUMEN_WORKSPACE set. Original baseline run.py also supports --save-model /tmp/lumen-reference-model.cbm to regenerate model weights from supplied training data.
+
+Holdout independence caveat: B1 metrics remain uninspected if the primary gate fails, but the same labels were already used in Track A development. B1 is a reserved protocol, not an independent final labelled test set. There is no untouched labelled release available; practice data has no labels and hidden test labels remain inaccessible.

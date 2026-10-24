@@ -1,0 +1,70 @@
+{
+  "model": "Strategy3 graph-enhanced CatBoost v1",
+  "seed": 20261024,
+  "grouped_mean_ap": 0.5448294041874198,
+  "grouped_pooled": {
+    "rows": 40131,
+    "positives": 1250,
+    "ap": 0.53718648041687,
+    "score": 53.718648041687004,
+    "roc_auc": 0.9023176564388776,
+    "review_budget": 402,
+    "precision_at_1pct": 0.8109452736318408,
+    "recall_at_1pct": 0.2608
+  },
+  "grouped_folds": [
+    {
+      "rows": 13377,
+      "positives": 416,
+      "ap": 0.5983379783572249,
+      "score": 59.83379783572249,
+      "roc_auc": 0.9006638999839758,
+      "review_budget": 134,
+      "precision_at_1pct": 0.9104477611940298,
+      "recall_at_1pct": 0.2932692307692308
+    },
+    {
+      "rows": 13377,
+      "positives": 417,
+      "ap": 0.5839404459666151,
+      "score": 58.39404459666151,
+      "roc_auc": 0.9188219794534742,
+      "review_budget": 134,
+      "precision_at_1pct": 0.8059701492537313,
+      "recall_at_1pct": 0.2589928057553957
+    },
+    {
+      "rows": 13377,
+      "positives": 417,
+      "ap": 0.4522097882384193,
+      "score": 45.22097882384193,
+      "roc_auc": 0.8870011398288777,
+      "review_budget": 134,
+      "precision_at_1pct": 0.7313432835820896,
+      "recall_at_1pct": 0.23501199040767387
+    }
+  ],
+  "behaviour_mean_ap": 0.5406322323640276,
+  "starter_catboost_mean_ap": 0.3581995070625555,
+  "temporal_diagnostic": {
+    "rows": 12000,
+    "positives": 428,
+    "ap": 0.5626889833981632,
+    "score": 56.26889833981632,
+    "roc_auc": 0.9346375879903474,
+    "review_budget": 120,
+    "precision_at_1pct": 0.825,
+    "recall_at_1pct": 0.23130841121495327,
+    "training_rows": 28131,
+    "training_positives": 822,
+    "cutoff_utc": "2026-09-06 00:00:00+00:00",
+    "description": "First-five-day labels fit, last-two-day labels check, using full permitted unlabelled seven-day context. Diagnostic, not causal detection or independent final holdout."
+  },
+  "feature_count": 457,
+  "limitations": [
+    "Medium/hard historical relays remain weak.",
+    "Grouped holdout is not fully wallet-disjoint.",
+    "Model selection reused grouped folds; no separate independent final labelled set.",
+    "No hidden-test labels or competition score were used."
+  ]
+}

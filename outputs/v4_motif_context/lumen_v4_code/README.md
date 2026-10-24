@@ -1,0 +1,46 @@
+# Lumen V4 - motif features + context stage
+
+This package trains CatBoost models from the organiser's labelled training split, then scores every test transaction. Only supplied competition data is used. It does not query a service or upload anything.
+
+## Exact reproduction command
+
+Python 3.12.13 was used on an Apple Silicon laptop (8 CPU cores). From the extracted code ZIP directory:
+
+```sh
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python run_v3.py --train /absolute/path/to/train --test /absolute/path/to/test-data --output predictions.csv
+```
+
+The training directory contains the released labelled tables and `labels.csv`. The test directory contains the separate test tables and rates. About 5 minutes after installation on the reference laptop (five CatBoost fits, four threads each). No GPU is required. A machine-readable report is written beside `predictions.csv`.
+
+`run.py` is the earlier V1 single-model path (portal run 1) and is kept for reference.
+
+## Approach
+
+1. **Payments and V1 features** (`payments.py`, `features.py`): one economic sender-to-recipient edge per transaction, valued in reference USD; 457 label-free features (wallet and pair statistics, multi-window flows, amount/time compatibility, bounded static graph roles).
+2. **Multi-scale motif features** (`motif.py`, new in V4): payments are linked when they touch the same wallet and are consecutive in that wallet's history within D minutes (D = 2, 5, 10, 20). Connected components approximate one burst of related activity. Each payment gets its burst's size, duration, rate, wallet roles (sources, sinks, intermediates, max in/out degree), cyclomatic number, repeated pairs, flow conservation through intermediates, value spread and its own position in the burst (80 features).
+3. **Stage 1**: CatBoost on V1 + motif features (fixed parameters in `config.json`).
+4. **Context stage** (`context.py`): for each payment, first-stage scores (as within-split percentiles) of other payments sharing its sender or receiver within 1/6/24/72 hours, directional up/downstream windows and whole-week wallet context. Training context uses grouped out-of-fold stage-1 scores; test context uses the full stage-1 model. Stage 2 is CatBoost on stage-1 features + context.
+5. **Final score**: equal-weight blend of stage-1 and stage-2 percentile ranks, with the mean raw probability as a tie-breaker.
+
+No raw account/hash/issuer ID, split ID, absolute date, scenario, family, cohort or difficulty is a predictor. Annotation fields define validation folds and evaluation slices only.
+
+## Local evaluation
+
+Three-fold grouped evaluation (cohort, else scenario, else row) on the training split, identical folds for every candidate. For the context stage, every first-stage score feeding a held-out fold's context comes from models that never saw that fold's labels (nested). `experiments/` contains the evaluation scripts.
+
+| Candidate | Mean fold AP x100 | Pooled AP x100 | Folds better than V1 | Top-1% true positives |
+|---|---:|---:|---:|---:|
+| V1 (portal run 1) | 54.5 | 53.7 | - | 326 |
+| V1 + context blend | 57.3 | 57.1 | 3/3 | 326 |
+| V1 + motif | 59.8 | 58.7 | 3/3 | 349 |
+| **V4: motif + context blend (this package)** | **61.6** | **61.5** | **3/3** | **355** |
+
+Control: averaging V1 over five seeds changed mean fold AP by +0.1, so the gains are not an ensembling artefact. The blend weight (0.5) was chosen on the same folds from three tried values. Easy AP rose from 0.73 to 0.83 and medium from 0.03 to 0.08; observable-hard relays remain essentially undetected and the 25 ambiguous labels are independent of observables by design.
+
+These are local metrics, not competition scores. Validation is not fully wallet-disjoint (only 700 wallets exist per split) and folds were reused across experiments, so gains can be optimistic.
+
+## Contents and provenance
+
+See `methodology.pdf` (V1 methodology; V4 changes are described above), `THIRD_PARTY.md`, `AI_DISCLOSURE.md` and `LICENSE`. The ZIP excludes datasets, predictions, model binaries and installed dependencies. Original solution code is MIT licensed; organiser material and libraries retain their original terms.

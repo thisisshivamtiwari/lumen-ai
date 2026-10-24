@@ -1,0 +1,30 @@
+{
+  "mean_fold_ap": 0.5448294041874198,
+  "pooled_oof_ap": 0.53718648041687,
+  "folds": [
+    {
+      "fold": 0,
+      "fit_rows": 26754,
+      "validation_rows": 13377,
+      "positive_count": 416,
+      "ap": 0.5983379783572249,
+      "group_overlap": 0
+    },
+    {
+      "fold": 1,
+      "fit_rows": 26754,
+      "validation_rows": 13377,
+      "positive_count": 417,
+      "ap": 0.5839404459666151,
+      "group_overlap": 0
+    },
+    {
+      "fold": 2,
+      "fit_rows": 26754,
+      "validation_rows": 13377,
+      "positive_count": 417,
+      "ap": 0.4522097882384193,
+      "group_overlap": 0
+    }
+  ]
+}

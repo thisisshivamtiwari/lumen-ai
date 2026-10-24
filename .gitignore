@@ -7,3 +7,42 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Competition inputs and local model artifacts
+decode-and-detect-*.zip
+data/
+artifacts/
+# Publish source snapshots; retain generated artifacts locally.
+outputs/**
+!outputs/**/
+!outputs/**/*.py
+!outputs/**/requirements*.txt
+!outputs/**/config.json
+!outputs/**/README.md
+!outputs/**/LICENSE
+!outputs/**/THIRD_PARTY.md
+!outputs/**/AI_DISCLOSURE.md
+!outputs/**/*_metrics.json
+!outputs/**/validation_summary.json
+# Publication staging and verification are local.
+outputs/publication/**
+*.joblib
+*.cbm
+catboost_info/
+
+# Model and feature-cache formats
+*.pt
+*.pth
+*.onnx
+*.npz
+*.npy
+*.parquet
+
+# Keep these exclusions after source-archive exceptions.
+**/.venv/
+**/node_modules/
+**/__pycache__/
+**/.env
+**/.env.*
+!**/.env.example
+*.py[cod]
